@@ -1,0 +1,254 @@
+/* ================= GLOBAL ================= */
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #0f172a, #020617 70%);
+  color: #e2e8f0;
+  font-family: "Inter", sans-serif;
+}
+
+/* ================= APP LAYOUT ================= */
+
+.app-container {
+  max-width: 1100px;
+  margin: auto;
+  padding: 40px 20px;
+}
+
+/* ================= HERO ================= */
+
+.hero {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.hero-title {
+  font-size: 72px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  background: linear-gradient(135deg, #22c55e, #0ea5e9);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.hero-sub {
+  color: #94a3b8;
+  margin-top: 8px;
+}
+
+.status-badge {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  background: rgba(34,197,94,0.15);
+  color: #4ade80;
+}
+
+/* ================= GLASS CARD ================= */
+
+.card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(18px);
+  border-radius: 20px;
+  padding: 18px;
+  transition: all 0.25s ease;
+}
+
+.card:hover {
+  border-color: rgba(0,240,255,0.5);
+  box-shadow: 0 0 25px rgba(0,240,255,0.15);
+  transform: translateY(-3px);
+}
+
+/* ================= SECTION TITLE ================= */
+
+.section-title {
+  font-size: 1rem;
+  margin-bottom: 12px;
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+/* ================= PEERS ================= */
+
+.peer-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.peer {
+  padding: 10px 16px;
+  border-radius: 20px;
+  background: rgba(56,189,248,0.08);
+  border: 1px solid rgba(56,189,248,0.25);
+  font-size: 13px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.peer:hover {
+  background: rgba(56,189,248,0.2);
+  transform: scale(1.05);
+}
+
+.peer.active {
+  border: 1px solid #22c55e;
+  background: rgba(34,197,94,0.15);
+}
+
+/* ================= TRANSFER ================= */
+
+.transfer-card {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.transfer-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ================= PROGRESS ================= */
+
+.progress-box {
+  margin-top: 12px;
+  position: relative;
+}
+
+.progress-bar {
+  height: 6px;
+  border-radius: 6px;
+  background: linear-gradient(90deg,#22c55e,#0ea5e9);
+  transition: width 0.2s ease;
+}
+
+.progress-box span {
+  font-size: 11px;
+  position: absolute;
+  right: 0;
+  top: -18px;
+}
+
+/* ================= DRAG & DROP ================= */
+
+.drop-zone {
+  margin-top: 12px;
+  padding: 20px;
+  border: 2px dashed rgba(255,255,255,0.15);
+  border-radius: 14px;
+  text-align: center;
+  color: #94a3b8;
+  transition: 0.2s;
+}
+
+.drop-zone:hover {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+/* ================= BLOCKCHAIN ================= */
+
+.blockchain {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+}
+
+.block {
+  min-width: 200px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 10px;
+  font-size: 12px;
+}
+
+.block strong {
+  color: #a78bfa;
+}
+
+/* ================= STATUS ================= */
+
+.status {
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 8px;
+}
+
+.status.sending {
+  background: rgba(255,165,0,0.2);
+  color: #facc15;
+}
+
+.status.receiving {
+  background: rgba(59,130,246,0.2);
+  color: #60a5fa;
+}
+
+.status.verified {
+  background: rgba(34,197,94,0.2);
+  color: #4ade80;
+}
+
+.status.failed {
+  background: rgba(239,68,68,0.2);
+  color: #f87171;
+}
+
+/* ================= GRID ================= */
+
+.dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ================= BUTTON ================= */
+
+button {
+  background: linear-gradient(135deg,#0ea5e9,#22c55e);
+  border: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(34,197,94,0.4);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ================= INPUT ================= */
+
+input {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.4);
+  color: white;
+  outline: none;
+}
+
+input:focus {
+  border-color: #38bdf8;
+}
