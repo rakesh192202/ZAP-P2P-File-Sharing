@@ -56,9 +56,9 @@ public class JChainController {
             webPort, udpPort, HashUtils.bytesToHex(localNodeId).substring(0, 12));
     }
 
-    public static void main(String[] args) {
-        SpringApplication.run(JChainController.class, args);
-    }
+    // public static void main(String[] args) {
+    //     SpringApplication.run(JChainController.class, args);
+    // }
 @GetMapping("/test")
 public Map<String, String> test() {
     return Map.of("status", "Backend is working");
