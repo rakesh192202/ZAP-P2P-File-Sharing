@@ -107,7 +107,7 @@ ZAP/
 
 ## 👨‍💻 Author
 
-**Rakesh Kumar** — B.E. Computer Science, [College Name]
+**Rakesh Kumar** — B.E. Computer Science, Jain University
 
 ## 📄 License
 
