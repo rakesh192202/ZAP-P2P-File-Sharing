@@ -23,7 +23,7 @@ import {
   verifyRegistrationPacket,
   zapIdToLookupKey,
   parseZapId,
-} from "./webrtc/identity.js";
+} from "./webrtc/Identity.js";
 
 const API_BASE = `http://${window.location.hostname}:8080/api/jchain`;
 
