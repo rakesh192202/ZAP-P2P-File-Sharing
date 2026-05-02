@@ -59,7 +59,10 @@ public class JChainController {
     public static void main(String[] args) {
         SpringApplication.run(JChainController.class, args);
     }
-
+@GetMapping("/test")
+public Map<String, String> test() {
+    return Map.of("status", "Backend is working");
+}
     // =========================================================================
     // DHT ENDPOINTS
     // =========================================================================
