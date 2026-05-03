@@ -1,17 +1,12 @@
-FROM maven:3.9.9-eclipse-temurin-21
-
+FROM eclipse-temurin:17-jdk-alpine AS build
 WORKDIR /app
-
-# Copy only pom first (for caching)
 COPY pom.xml .
-
-RUN mvn -B -q -e -DskipTests dependency:go-offline
-
-# Copy source
 COPY src ./src
+RUN apk add --no-cache maven && mvn package -DskipTests -q
 
-# Build jar
-RUN mvn clean package -DskipTests
-
-# Run app
-CMD ["java", "-jar", "target/jchain-backend-1.0.0.jar"]
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+# Render injects PORT env var
+EXPOSE $PORT
+ENTRYPOINT ["java", "-jar", "app.jar"]
