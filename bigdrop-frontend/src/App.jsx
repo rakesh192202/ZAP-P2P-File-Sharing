@@ -287,130 +287,195 @@ export default function App() {
   },[]);
 
   // Main effect
-  useEffect(()=>{
-    if(!identity||screen!=='app') return;
-
-    // Register on DHT
-    (async()=>{
-      try{
-        const pkt=await buildRegistrationPacket(identity);
-        const key=zapIdToLookupKey(identity.zapId);
-        // Cache our own nodeId→zapId
-        ZAP.cacheNodeZapId(identity.nodeId, identity.zapId);
-        const r=await fetch(`${API_BASE}/dht/store`,{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({key,value:JSON.stringify(pkt)})
+ useEffect(() => {
+    if (!identity || screen !== 'app') return;
+ 
+    // ── Register on DHT ──────────────────────────────────────────────────────
+    (async () => {
+      try {
+        const pkt = await buildRegistrationPacket(identity);
+        const key = zapIdToLookupKey(identity.zapId);
+        const r   = await fetch(`${API_BASE}/dht/store`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ key, value: JSON.stringify(pkt) }),
         });
         setOnline(r.ok);
-        if(r.ok) toast(`Online as ${identity.zapId}`,'success');
-        else toast('DHT store failed — check Java backend','error');
-      }catch{ setOnline(false); toast('Backend offline — Render may be sleeping, wait 50s then refresh','error'); }
-    })();
-
-    // Signaling
-    ZAP.setDHTSignaling(async(targetId,sig)=>{
-      try{
-        await fetch(`${API_BASE}/dht/signal`,{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({target:targetId,signal:JSON.stringify(sig),sender:identity.nodeId})
-        });
-      }catch{}
-    });
-
-    // New incoming peer (phone→mac fix)
-    ZAP.setNewPeerHandler(async(fromId)=>{
-      if(peersRef.current.find(p=>p.nodeId===fromId)) return;
-      // Check cache first
-      let zapId=ZAP.getNodeZapId(fromId);
-      if(!zapId){
-        // Try DHT lookup by nodeId (as prefix search)
-        try{
-          const r=await fetch(`${API_BASE}/dht/find?key=${encodeURIComponent(fromId.slice(0,8))}`);
-          if(r.ok){const d=await r.json();if(d?.zapId){zapId=d.zapId;ZAP.cacheNodeZapId(fromId,d.zapId);}}
-        }catch{}
-        if(!zapId) zapId=fromId.slice(0,8)+'…';
+        if (r.ok) {
+          // FIX: tell webrtc.js our zapId so IDENTIFY works without DHT lookup
+          ZAP.setMyZapId(identity.zapId);
+          toast(`Online as ${identity.zapId}`, 'success');
+        } else {
+          toast('DHT store failed', 'error');
+        }
+      } catch {
+        setOnline(false);
+        toast('Backend offline — check Render is awake', 'error');
       }
-      const np={zapId,nodeId:fromId,status:'connecting'};
-      setPeers(ps=>{if(ps.find(p=>p.nodeId===fromId))return ps;return[...ps,np];});
-      if(!activeRef.current) setActive(np);
-      toast(`Incoming: ${zapId}`,'info');
+    })();
+ 
+    // ── Keep Render free tier warm (ping every 4 min) ────────────────────────
+    // Without this, Render spins down → 50s cold start → ICE candidates expire
+    const keepAlive = setInterval(() => {
+      fetch(`${API_BASE}/status`).catch(() => {});
+    }, 4 * 60 * 1000);
+ 
+    // ── ZAP signaling ────────────────────────────────────────────────────────
+    ZAP.setDHTSignaling(async (targetId, sig) => {
+      try {
+        await fetch(`${API_BASE}/dht/signal`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            target: targetId,
+            signal: JSON.stringify(sig),
+            sender: identity.nodeId,
+          }),
+        });
+      } catch {}
     });
-
-    ZAP.setFileStartHandler((fromId,meta)=>{
-      setRecvProg({name:meta.name,pct:0,speed:'0',nodeId:fromId,bytes:0,total:meta.size});
+ 
+    // ── Incoming peer handler — FIX: no DHT lookup, uses IDENTIFY message ───
+    // Old code: fetch(`/dht/find?key=${fromId}`) → always 404 (nodeId ≠ zapId key)
+    // New code: webrtc.js sends IDENTIFY on ctrl open, calls this with resolvedZapId
+    ZAP.setNewPeerHandler((fromId, resolvedZapId) => {
+      const zapId = resolvedZapId ?? ZAP.getNodeZapId(fromId) ?? (fromId.slice(0, 8) + '…');
+ 
+      setPeers(ps => {
+        const existing = ps.find(p => p.nodeId === fromId);
+        if (existing) {
+          if (resolvedZapId && existing.zapId !== zapId) {
+            return ps.map(p => p.nodeId === fromId ? { ...p, zapId } : p);
+          }
+          return ps;
+        }
+        return [...ps, { zapId, nodeId: fromId, status: 'connecting' }];
+      });
+ 
+      if (!activeRef.current) {
+        setActive({ zapId, nodeId: fromId, status: 'connecting' });
+        setStab('peers');
+      }
+ 
+      if (resolvedZapId) {
+        toast(`${resolvedZapId} connected`, 'success');
+      } else {
+        toast(`Peer connecting…`, 'info');
+      }
     });
-
-    ZAP.setProgressHandler((fromId,p)=>{
-      setRecvProg({name:p.name,pct:p.pct,speed:p.speed,nodeId:fromId,bytes:p.bytes,total:p.total});
+ 
+    // ── File start ───────────────────────────────────────────────────────────
+    ZAP.setFileStartHandler((fromId, meta) => {
+      setRecvProg({ name: meta.name, pct: 0, speed: '0', nodeId: fromId, bytes: 0, total: meta.size });
     });
-
-    ZAP.setFileReadyHandler((fromId,result)=>{
-      const peer=peersRef.current.find(p=>p.nodeId===fromId);
-      const myId=identRef.current?.zapId??'me';
-      const entry={
-        direction:'received',name:result.name,size:result.size,
-        fileType:getType(result.name),ext:getExt(result.name),
-        from:peer?.zapId??(fromId.slice(0,10)+'…'),to:myId,
-        timestamp:Date.now(),merkleRoot:result.merkleRoot,
-        savedToDisk:result.savedToDisk,url:result.url,
+ 
+    // ── File ready ───────────────────────────────────────────────────────────
+    ZAP.setFileReadyHandler((fromId, result) => {
+      const peer  = peersRef.current.find(p => p.nodeId === fromId);
+      //const myId  = identityRef.current?.zapId ?? 'me';
+      const myId = identRef.current?.zapId ?? 'me';
+      const entry = {
+        direction:   'received',
+        name:        result.name,
+        size:        result.size,
+        fileType:    getType(result.name),
+        ext:         getExt(result.name),
+        from:        peer?.zapId ?? (fromId.slice(0, 10) + '…'),
+        to:          myId,
+        timestamp:   Date.now(),
+        merkleRoot:  result.merkleRoot,
+        savedToDisk: result.savedToDisk,
+        url:         result.url,
       };
-      addTx(fromId,entry);
+      addTx(fromId, entry);
       setRecvProg(null);
-      if(activeRef.current?.nodeId===fromId) setTab('history');
-      toast(`✅ Received: ${result.name} (${fmtBytes(result.size)})`,'success');
-      anchorBlock({...entry,senderNodeId:fromId,receiverNodeId:identRef.current?.nodeId});
+      setTab('history');
+      if (!activeRef.current || activeRef.current.nodeId !== fromId) {
+        const p = peersRef.current.find(x => x.nodeId === fromId);
+        if (p) setActive(p);
+      }
+      const saved = result.savedToDisk ? ' — saved to disk' : '';
+      toast(`✅ Received: ${result.name} (${fmtBytes(result.size)})${saved}`, 'success');
+      anchorBlock({ ...entry, senderNodeId: fromId, receiverNodeId: identityRef.current?.nodeId });
     });
-
-    ZAP.setConnectHandler(nodeId=>{
-      setPeers(ps=>ps.map(p=>p.nodeId===nodeId?{...p,status:'online'}:p));
-      toast('Connected ✓','success');
+ 
+    // ── Progress ─────────────────────────────────────────────────────────────
+    ZAP.setProgressHandler((fromId, p) => {
+      setRecvProg({ name: p.name, pct: p.pct, speed: p.speed, nodeId: fromId, bytes: p.bytes, total: p.total });
     });
-    ZAP.setDisconnectHandler(nodeId=>{
-      setPeers(ps=>ps.map(p=>p.nodeId===nodeId?{...p,status:'offline'}:p));
+ 
+    // ── Connect / Disconnect ─────────────────────────────────────────────────
+    ZAP.setConnectHandler(nodeId => {
+      setPeers(ps => ps.map(p => p.nodeId === nodeId ? { ...p, status: 'online' } : p));
+      setActive(a => a?.nodeId === nodeId ? { ...a, status: 'online' } : a);
     });
-
-    // Signal poll — named function, sequential
-    let active_poll=true;
-    async function doPoll() {
-      if(!active_poll) return;
-      try{
-        const r=await fetch(`${API_BASE}/get-signals`,{signal:AbortSignal.timeout(3000)});
-        if(r.ok){
-          const sigs=await r.json();
-          if(Array.isArray(sigs)){
-            for(const s of sigs){
-              if(!active_poll) break;
-              // Extract fields — backend varies
-              const fromId = s.senderId || s.sender;
-              // CRITICAL: double-unwrap JSON
-              let payload = s.payload || s.signal || s.data;
-              if(typeof payload==='string'){try{payload=JSON.parse(payload);}catch{}}
-              if(typeof payload==='string'){try{payload=JSON.parse(payload);}catch{}}
-
-              if(!fromId || !payload?.type) continue;
-              // Skip own signals
-              if(fromId===identRef.current?.nodeId) continue;
-              // Dedup
-              const key=`${fromId}:${payload.type}:${JSON.stringify(payload).slice(0,60)}`;
-              if(seenSigs.current.has(key)) continue;
-              seenSigs.current.add(key);
-              if(seenSigs.current.size>600){const f=seenSigs.current.values().next().value;seenSigs.current.delete(f);}
-
-              await ZAP.handleIncomingSignal(fromId,payload).catch(e=>console.warn('[poll/sig]',e.message));
+    ZAP.setDisconnectHandler(nodeId => {
+      setPeers(ps => ps.map(p => p.nodeId === nodeId ? { ...p, status: 'offline' } : p));
+      setActive(a => a?.nodeId === nodeId ? { ...a, status: 'offline' } : a);
+    });
+ 
+    // ── Signal poll — adaptive interval ──────────────────────────────────────
+    // FIX: adaptive back-off instead of fixed 2s
+    //   Active handshake → 500ms polls (ICE needs to be fast)
+    //   Idle            → backs off to 4s  (saves battery / bandwidth)
+    let polling      = true;
+    let pollInterval = 800;
+ 
+    const doPoll = async () => {
+      if (!polling) return;
+      let hadSignals = false;
+ 
+      try {
+        const r = await fetch(`${API_BASE}/get-signals?nodeId=${encodeURIComponent(identity.nodeId)}`);
+        if (r.ok) {
+          const sigs = await r.json();
+          if (Array.isArray(sigs) && sigs.length > 0) {
+            hadSignals = true;
+            for (const s of sigs) {
+              if (!polling) break;
+              const fromId  = s.senderId || s.sender;
+              let   payload = s.payload  || s.signal;
+              if (!fromId || !payload) continue;
+ 
+              const target = s.targetNodeId || s.target;
+              if (target && target !== identity.nodeId) continue;
+              if (fromId === identity.nodeId) continue;
+ 
+              if (typeof payload === 'string') { try { payload = JSON.parse(payload); } catch {} }
+              if (typeof payload === 'string') { try { payload = JSON.parse(payload); } catch {} }
+              if (!payload?.type) continue;
+ 
+              console.log(`[ZAP/poll] ← ${payload.type} from ${fromId.slice(0, 10)}`);
+              await ZAP.handleIncomingSignal(fromId, payload);
             }
           }
         }
-      }catch{}
-      try{
-        const r2=await fetch(`${API_BASE}/peers`,{signal:AbortSignal.timeout(2000)});
-        if(r2.ok){const p=await r2.json();setDhtCount(Array.isArray(p)?p.length:0);}
-      }catch{}
-      if(active_poll) setTimeout(doPoll,800);
-    }
+      } catch {}
+ 
+      // Peer count — poll every 15s only
+      if (!doPoll._lastPeer || Date.now() - doPoll._lastPeer > 15_000) {
+        doPoll._lastPeer = Date.now();
+        try {
+          const r2 = await fetch(`${API_BASE}/peers`);
+          if (r2.ok) {
+            const p = await r2.json();
+            setDhtCount(Array.isArray(p) ? p.length : 0);
+          }
+        } catch {}
+      }
+ 
+      // Adaptive interval
+      pollInterval = hadSignals ? 500 : Math.min(pollInterval * 1.3, 4000);
+      if (polling) setTimeout(doPoll, pollInterval);
+    };
+ 
     doPoll();
-
-    return ()=>{ active_poll=false; seenSigs.current.clear(); };
-  },[identity,screen]);
+ 
+    return () => {
+      polling = false;
+      clearInterval(keepAlive);
+    };
+  }, [identity, screen]);
 
   const loadChain=useCallback(async()=>{
     try{const r=await fetch(`${API_BASE}/history`);if(r.ok){const d=await r.json();setChain(Array.isArray(d)?[...d].reverse():[]);}}catch{}
