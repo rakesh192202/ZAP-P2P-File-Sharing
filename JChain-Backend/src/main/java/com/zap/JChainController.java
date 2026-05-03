@@ -11,11 +11,18 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.web.bind.annotation.CrossOrigin;
+
+@CrossOrigin(origins = "*") // allow all (for now)
+@RestController
+@RequestMapping("/api/jchain")
+//public class JChainControllr {
 
 @SpringBootApplication
 @RestController
 @RequestMapping("/api/jchain")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
+
 public class JChainController {
 
     private static final String LEDGER_PATH = "ledger.json";
