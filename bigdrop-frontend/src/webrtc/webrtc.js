@@ -385,7 +385,12 @@ async function _sendSimple(file, remoteId, onProgress) {
   await Promise.all([...allChs,ctrl].map(ch => new Promise(res=>{
     const chk=()=>ch.readyState!=='open'||ch.bufferedAmount===0?res():setTimeout(chk,25); chk();
   })));
+  // Small delay — let receiver process last chunks before EOF
+  await new Promise(r => setTimeout(r, 400));
   ctrl.send(JSON.stringify({ type:'EOF', totalChunks:total }));
+  // Send twice — internet connections can drop single messages
+  await new Promise(r => setTimeout(r, 300));
+  if (ctrl.readyState === 'open') ctrl.send(JSON.stringify({ type:'EOF', totalChunks:total }));
   if (onProgress) onProgress({ pct:100, speed:'0', name:file.name, bytes:sent, total:file.size });
   const el = ((Date.now()-t0)/1000).toFixed(1);
   console.log(`[ZAP] ✅ Sent ${file.name} in ${el}s @ ${(file.size/1048576/parseFloat(el)).toFixed(1)} MB/s`);
