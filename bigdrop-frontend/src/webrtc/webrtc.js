@@ -22,8 +22,8 @@ const IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(UA);
 const PLATFORM = IS_IOS ? 'ios' : IS_MOBILE ? 'mobile' : 'desktop';
 const PARAMS = {
   ios:     { chunkSize:  16*1024, numChan: 1, maxBuf:  512*1024 },
-  mobile:  { chunkSize:  64*1024, numChan: 2, maxBuf: 2*1024*1024 },
-  desktop: { chunkSize: 256*1024, numChan: 4, maxBuf: 8*1024*1024 },
+  mobile:  { chunkSize:  64*1024, numChan: 1, maxBuf: 1*1024*1024 },
+  desktop: { chunkSize: 256*1024, numChan: 2, maxBuf: 3*1024*1024 },  // 2 channels + lower buf for internet
 };
 const P = PARAMS[PLATFORM];
 
@@ -263,11 +263,11 @@ function buildPC(nodeId, state, isInitiator) {
   };
 
   if (isInitiator) {
-    const ctrl = pc.createDataChannel('ctrl', { ordered: true });
+    const ctrl = pc.createDataChannel('ctrl', { ordered: true, maxRetransmits: 30 });
     state.ctrl = ctrl; setupCtrl(ctrl, state);
     state.dataChs = [];
     for (let i = 1; i < P.numChan; i++) {
-      const dc = pc.createDataChannel(`d${i}`, { ordered: true });
+      const dc = pc.createDataChannel(`d${i}`, { ordered: true, maxRetransmits: 30 });
       state.dataChs.push(dc); setupData(dc, state);
     }
   } else {
