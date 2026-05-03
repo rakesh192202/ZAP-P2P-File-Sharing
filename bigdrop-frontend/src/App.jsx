@@ -405,7 +405,7 @@ export default function App() {
         const r2=await fetch(`${API_BASE}/peers`,{signal:AbortSignal.timeout(2000)});
         if(r2.ok){const p=await r2.json();setDhtCount(Array.isArray(p)?p.length:0);}
       }catch{}
-      if(active_poll) setTimeout(doPoll,1500);
+      if(active_poll) setTimeout(doPoll,800);
     }
     doPoll();
 

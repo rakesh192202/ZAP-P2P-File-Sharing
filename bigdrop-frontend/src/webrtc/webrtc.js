@@ -32,15 +32,23 @@ export const NUM_CHANNELS = P.numChan;
 export const SWARM_THRESHOLD = 500 * 1024 * 1024;  // 500MB → use swarm
 
 const HAS_FS  = typeof window !== 'undefined' && 'showSaveFilePicker' in window;
-const CONN_TO = 90_000;
+const CONN_TO = 120_000;  // 2 min — Render cold start can take 50s
 
 const ICE_SERVERS = [
+  // STUN servers (free, reliable)
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
   { urls: 'stun:stun.cloudflare.com:3478' },
+  // Metered TURN — most reliable free option
   { urls: 'turn:openrelay.metered.ca:80',               username:'openrelayproject', credential:'openrelayproject' },
   { urls: 'turn:openrelay.metered.ca:443',              username:'openrelayproject', credential:'openrelayproject' },
   { urls: 'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject', credential:'openrelayproject' },
+  // Backup TURN servers
+  { urls: 'turn:relay1.expressturn.com:3478',           username:'efRXGDMKJ9VF5PRQKM', credential:'3XLbmVtVGfaXuYXZ' },
+  { urls: 'turn:freestun.net:3478',                     username:'free',              credential:'free' },
+  { urls: 'turn:freestun.net:5349',                     username:'free',              credential:'free' },
 ];
 
 // ── NodeId ↔ ZapId Cache ──────────────────────────────────────────────────────
