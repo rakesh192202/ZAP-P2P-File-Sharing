@@ -37,16 +37,29 @@ const CONN_TO = 130_000; // 130s — covers Render 50s cold start + ICE gatherin
 
 // ── ICE servers — ordered by preference (STUN first, TURN fallback) ──────────
 const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302'   },
-  { urls: 'stun:stun1.l.google.com:19302'  },
-  { urls: 'stun:stun.cloudflare.com:3478'  },
-  // Metered TURN — most reliable
-  { urls: 'turn:openrelay.metered.ca:80',                username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443',               username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-  // Backup TURN
-  { urls: 'turn:relay1.expressturn.com:3478', username: 'efRXGDMKJ9VF5PRQKM', credential: '3XLbmVtVGfaXuYXZ' },
-  { urls: 'turn:freestun.net:3478',           username: 'free',                credential: 'free'            },
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+  {
+    urls:       'turn:relay.metered.ca:80',
+    username:   'e2a857c97d6af0e89d1be06e',
+    credential: 'uAnBRLGrzFSHCgvP',
+  },
+  {
+    urls:       'turn:relay.metered.ca:443',
+    username:   'e2a857c97d6af0e89d1be06e',
+    credential: 'uAnBRLGrzFSHCgvP',
+  },
+  {
+    urls:       'turn:relay.metered.ca:443?transport=tcp',
+    username:   'e2a857c97d6af0e89d1be06e',
+    credential: 'uAnBRLGrzFSHCgvP',
+  },
+  {
+    urls:       'turns:relay.metered.ca:443',
+    username:   'e2a857c97d6af0e89d1be06e',
+    credential: 'uAnBRLGrzFSHCgvP',
+  },
 ];
 
 // ── NodeId ↔ ZapId cache ──────────────────────────────────────────────────────
@@ -542,9 +555,21 @@ function buildPC(nodeId, state, isInitiator) {
     const s = pc.iceConnectionState;
     console.log(`[ZAP/ICE conn] ${nodeId.slice(0, 12)}: ${s}`);
     if (s === 'failed') {
-      console.log('[ZAP] ICE failed — attempting restart');
-      try { pc.restartIce(); } catch { closeConnection(nodeId); }
-    }
+  console.log('[ZAP] ICE failed — attempting restart');
+  try { pc.restartIce(); } catch { closeConnection(nodeId); }
+}
+
+// REPLACE with:
+if (s === 'failed') {
+  console.log('[ZAP] ICE failed — forcing TURN relay restart');
+  try {
+    pc.setConfiguration({
+  iceServers: ICE_SERVERS,
+  iceTransportPolicy: 'relay'
+});
+pc.restartIce();
+  } catch { closeConnection(nodeId); }
+}
     if (s === 'disconnected') {
       setTimeout(() => {
         if (peers.get(nodeId)?.status !== 'open') closeConnection(nodeId);
