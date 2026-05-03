@@ -24,15 +24,8 @@ import {
   zapIdToLookupKey,
   parseZapId,
 } from "./webrtc/Identity.js";
-const API_BASE = "https://zap-p2p-file-sharing.onrender.com";
 
-async function getStatus() {
-  const res = await fetch(`${API_BASE}/api/jchain/status`);
-  const data = await res.json();
-  console.log(data);
-}
-
-//const API_BASE = `http://${window.location.hostname}:8080/api/jchain`;
+const API_BASE = `http://${window.location.hostname}:8080/api/jchain`;
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const fmtBytes = b => {
@@ -435,9 +428,6 @@ export default function App() {
         toast('Backend offline — start Java :8080', 'error');
       }
     })();
-    useEffect(() => {
-  getStatus();
-}, []);
 
     // ── ZAP signaling ────────────────────────────────────────────────────────
     ZAP.setDHTSignaling(async (targetId, sig) => {
